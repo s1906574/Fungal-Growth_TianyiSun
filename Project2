@@ -5,124 +5,107 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 # load the package
 library(tidyverse)
+library(ggplot2)
 
 # read the data
 data <- read_csv("data.csv")
 ```
 
-# Data Process
+#### Data Process
 ```{r}
-## normalization by lognormal
+# normalization by lognormal
 data$log_tpm<-log(data$TPM+1)
 data$log_foldchange<-log(data$FoldChange+1)
 
-## impute the missing values by mean
+# impute the missing values by mean
 sum(is.na(data))  
 for (i in 1:35){
   data[,i]=impute(data[,i],mean)
 
-# Correlation map
+# correlation map
 library(corrr)
 data_corr <- data %>% 
+# calculate the correlation by spearman
   cor(method = "spearman")       
 rplot(data_corr) +
-  theme(axis.text.x = element_text(angle = 35, hjust = 1))
+  theme(axis.text.x = element_text(hjust = 1，angle = 35))
+ 
 # Heatmap
-library(ggplot2)
 library(heatmaply)
-heatmaply(data[1,35],dendrogram = 'none')
-```
-描述醒没有改
-###Medium
-```{r}
-count_condition_media<-factor(c(rep('RC1',2),rep('YC1',2)))
-coldata_media<-data.frame(row.names = colnames(dmatrix[,c(1,2,19,20)]),count_condition_media)
-dds_media<- DESeqDataSetFromMatrix(countData = round(dmatrix[,c(1,2,19,20)]*10), colData = coldata_media, design=~count_condition_media)
-dds_out_media<-DESeq(dds_media)
-res_media<-results(dds_out_media)
-summary(res_media)
-resdata_media<- merge(as.data.frame(res_media[,]), as.data.frame(counts(dds_media, normalized=FALSE)), by="row.names", sort=FALSE)
-names(resdata_media)[1] <- "Gene"
-resdata_media$threshold[resdata_media$pvalue < 0.05 & resdata_media$log2FoldChange>0 ] = "up"
-resdata_media$threshold[resdata_media$pvalue < 0.05 & resdata_media$log2FoldChange<0 ] = "down"
-resdata_media$threshold[resdata_media$pvalue > 0.05 ] = "not_significant"
-p_media<-ggplot(resdata_media,aes(x=log2FoldChange/10,y=-log10(pvalue),colour=threshold))+xlab("log2 Fold Change")+ylab("-log10 P-Value")+
-  geom_point(size=4,alpha=0.6)+scale_color_manual(values =c("red","black","blue"))+ggtitle('RPMI VS. YPD')    
-p_media
+heatmaply(data[1,35])
 ```
 
-###Temperature
+#### Explanatory Analysis
+
+# Temperature
 ```{r}
-count_condition_temp<-factor(c(rep('RC1',2),rep('RH1',2)))
-coldata_temp<-data.frame(row.names = colnames(dmatrix[,c(1,2,9,10)]),count_condition_temp)
-dds_temp<- DESeqDataSetFromMatrix(countData = round(dmatrix[,c(1,2,9,10)]*10), colData = coldata_temp, design=~count_condition_temp)
-dds_out_temp<-DESeq(dds_temp)
-res_temp<-results(dds_out_temp)
-summary(res_temp)
-resdata_temp<- merge(as.data.frame(res_temp[,]), as.data.frame(counts(dds_temp, normalized=FALSE)), by="row.names", sort=FALSE)
-names(resdata_temp)[1] <- "Gene"
-resdata_temp$threshold[resdata_temp$pvalue < 0.05 & resdata_temp$log2FoldChange>0 ] = "up"
-resdata_temp$threshold[resdata_temp$pvalue < 0.05 & resdata_temp$log2FoldChange<0 ] = "down"
-resdata_temp$threshold[resdata_temp$pvalue > 0.05 ] = "not_significant"
-p_temp<-ggplot(resdata_temp,aes(x=log2FoldChange/10,y=-log10(pvalue),colour=threshold))+xlab("log2 Fold Change")+ylab("-log10 P-Value")+
-  geom_point(size=4,alpha=0.6)+scale_color_manual(values =c("red","black","blue"))+ggtitle('Low Temperature VS. High Temperature')    
-p_temp
+count_temperature<-factor(c(rep('RC1',2),rep('RH1',2)))
+temperature_data<-data.frame(row.names = colnames(dmatrix[,c(1,2,9,10)]),count_temperature)
+temperature<- DESeqDataSetFromMatrix(countData = round(dmatrix[,c(1,2,9,10)]*10), data = temperature_data, design=~count_temperature)
+data_temperature<- merge(
+as.data.frame(temperature[,]), as.data.frame(counts(temperature, normalized=FALSE)), by="row.names")
+names(data_temperature)[1] <- "Gene"
+data_temperature$threshold[resdata_temperature$pvalue < 0.05 & resdata_temperature$log2FoldChange>0 ] = "up"
+data_temperature$threshold[resdata_temperature$pvalue < 0.05 & resdata_temperature$log2FoldChange<0 ] = "down"
+data_temperature$threshold[resdata_temperature$pvalue > 0.05 ] = "no_significant"
+plot_temperature<-ggplot(data_temperature,aes(x=log2FoldChange/10,y=-log10(pvalue),colour=threshold))+xlab("log2 Fold Change")+ylab("-log10 P-Value")+scale_color_manual(values =c("black","red","blue"))   
+plot_temperature
 ```
-# Cluster
+# Media
+count_media<-factor(c(rep('RC1',2),rep('YC1',2)))
+media_data<-data.frame(row.names = colnames(dmatrix[,c(1,2,19,20)]),count_media)
+media<-DESeqDataSetFromMatrix(countData = round(dmatrix[,c(1,2,19,20)]*10), data = media_data, design=~count_media)
+data_media<- merge(
+as.data.frame(results(DESeq(media))[,]),
+as.data.frame(counts(media, normalized=FALSE)), by="row.names")
+names(data_media)[1] <- "Gene"
+data_media$threshold[resdata_media$pvalue < 0.05 & resdata_media$log2FoldChange>0 ] = "up"
+data_media$threshold[resdata_media$pvalue < 0.05 & resdata_media$log2FoldChange<0 ] = "down"
+data_media$threshold[resdata_media$pvalue > 0.05 ] = "no_significant"
+plot_media<-ggplot(data_media,aes(x=log2FoldChange/10,y=-log10(pvalue),colour=threshold))+xlab("log2 Fold Change")+ylab("-log10 P-Value")+scale_color_manual(values =c("black","red","blue"))    
+plot_media
+
+
+
+
+#### Cluster
+# create a new matrix for cluster
 cluster_matrix <- data %>% 
   select(-gene) %>% 
   as.matrix()
-
 rownames(cluster_matrix) <- data$gene
-cluster_matrix <- cluster_matrix[candidate_genes, ]
+cluster_matrix <- cluster_matrix[genes, ]
 cluster_matrix <- cluster_matrix %>% 
   t() %>% 
   scale() %>% 
   t()
   gene_dist <- dist(cluster_matrix)
- gene_cluster <- hclust(gene_dist, method = "complete")
-
-plot(gene_cluster, labels = FALSE)
+ gene_cluster <- hclust(gene_dist)
+# plot the cluster
+plot(gene_cluster)
 abline(h = 10, col = "blue") 
 
 # heatmap for cluster
 library(ComplexHeatmap)
-Heatmap(hclust_matrix, show_row_names = FALSE)
+Heatmap(hclust_matrix)
 
-
-PCA
-# Create a new matrix for PCA
+#### PCA
+# create a new matrix for PCA
 pca_matrix <- data %>% 
   select(-gene) %>% 
   as.matrix()
-
 rownames(pca_matrix) <- data$gene
-
-# Transpose the matrix so that rows = samples and columns = variables
 pca_matrix <- t(pca_matrix)
-
-# Perform the PCA
 sample_pca <- prcomp(pca_matrix)
-# Convert matrix to tibble - add colnames to a new column called "gene"
 as_tibble(pca_matrix, rownames = "sample")
 
-library(broom)
-# PC variances (eigen values)
-tidy(sample_pca, matrix = "eigenvalues")
 tidy(sample_pca, matrix = "eigenvalues") %>% 
   ggplot(aes(x = factor(PC))) +
   geom_col(aes(y = percent)) +
   geom_line(aes(y = cumulative, group = 1)) + 
   geom_point(aes(y = cumulative)) +
-  labs(x = "Principal component", y = "Fraction variance explained")
   
-  # The PC scores are stored in the "x" value of the prcomp object, which is a matrix
-pc_scores <- sample_pca$x 
-
-# Make PCA plot
-pc_scores %>% 
-  # convert it to a tibble retaining the sample names as a new column
+# plot PCA
+sample_pca$x %>% 
   as_tibble(rownames = "sample") %>% 
-  # create the plot
-  ggplot(aes(x = PC1, y = PC2)) +
-  geom_point()
+  ggplot() + geom_point()
